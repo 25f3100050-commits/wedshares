@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 type Wedding = {
   id: string;
@@ -14,27 +13,19 @@ type Wedding = {
   cover_image_url: string | null;
   public_url: string;
   statistics: any;
+  created_at: string;
 };
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [weddings, setWeddings] = useState<Wedding[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchWeddings = async () => {
       try {
-        // Get current user
-        const { data: authData, error: authError } = await supabase.auth.getUser();
-        if (authError) throw authError;
-        if (!authData.user) {
-          router.push('/auth/login');
-          return;
-        }
-        setUser(authData.user);
+        const { data: authData } = await supabase.auth.getUser();
+        if (!authData.user) return;
 
-        // Get user's weddings
         const { data, error } = await supabase
           .from('weddings')
           .select('*')
@@ -44,117 +35,124 @@ export default function DashboardPage() {
         if (error) throw error;
         setWeddings(data || []);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching weddings:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, [router]);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-  };
+    fetchWeddings();
+  }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg text-gray-600">Loading...</p>
-      </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center py-12">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-r from-pink-600 to-rose-600 mx-auto mb-4 animate-spin" />
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-4 py-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-indigo-600">WedShares</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700">{user?.email}</span>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-            >
-              Logout
-            </button>
-          </div>
+      <div className="flex items-center justify-between mb-12">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Weddings</h1>
+          <p className="text-gray-600">Create, manage, and share your wedding events</p>
         </div>
-      </header>
+        <Link
+          href="/dashboard/create"
+          className="px-6 py-3 bg-gradient-to-r from-pink-600 to-rose-600 text-white font-semibold rounded-lg hover:opacity-90 transition"
+        >
+          + Create Wedding
+        </Link>
+      </div>
 
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-12">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">My Weddings</h2>
+      {/* Wedding Cards Grid */}
+      {weddings.length === 0 ? (
+        <div className="text-center py-20">
+          <div className="text-6xl mb-6">💒</div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">No weddings yet</h2>
+          <p className="text-gray-600 mb-8">Create your first wedding to start collecting memories</p>
           <Link
             href="/dashboard/create"
-            className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
+            className="inline-block px-6 py-3 bg-gradient-to-r from-pink-600 to-rose-600 text-white font-semibold rounded-lg hover:opacity-90 transition"
           >
-            + Create Wedding
+            Create Your First Wedding
           </Link>
         </div>
-
-        {weddings.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg mb-6">No weddings yet. Create your first one!</p>
-            <Link
-              href="/dashboard/create"
-              className="inline-block px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
-            >
-              Create Your First Wedding
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {weddings.map((wedding) => (
-              <div key={wedding.id} className="bg-white rounded-lg shadow hover:shadow-lg transition overflow-hidden">
-                {wedding.cover_image_url && (
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {weddings.map((wedding) => (
+            <div key={wedding.id} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-100 overflow-hidden transition-all">
+              {/* Cover Image */}
+              <div className="aspect-video bg-gradient-to-br from-pink-100 to-rose-100 overflow-hidden">
+                {wedding.cover_image_url ? (
                   <img
                     src={wedding.cover_image_url}
                     alt={wedding.couple_names}
-                    className="w-full h-48 object-cover"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                )}
-                <div className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">{wedding.couple_names}</h3>
-                  <p className="text-gray-600 mb-1">{wedding.event_name}</p>
-                  <p className="text-gray-600 mb-4">{wedding.event_date} • {wedding.location}</p>
-
-                  <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
-                    <div className="bg-blue-50 p-2 rounded">
-                      <p className="text-gray-600">Photos</p>
-                      <p className="text-xl font-bold text-blue-600">{wedding.statistics?.total_photos || 0}</p>
-                    </div>
-                    <div className="bg-purple-50 p-2 rounded">
-                      <p className="text-gray-600">Videos</p>
-                      <p className="text-xl font-bold text-purple-600">{wedding.statistics?.total_videos || 0}</p>
-                    </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="text-4xl">💒</span>
                   </div>
+                )}
+              </div>
 
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/dashboard/wedding/${wedding.id}`}
-                      className="flex-1 px-4 py-2 bg-indigo-600 text-white text-center rounded-lg hover:bg-indigo-700 transition"
-                    >
-                      View
-                    </Link>
-                    <a
-                      href={`/guest/${wedding.public_url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 px-4 py-2 bg-green-600 text-white text-center rounded-lg hover:bg-green-700 transition"
-                    >
-                      Share
-                    </a>
+              {/* Content */}
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{wedding.couple_names}</h3>
+                <p className="text-gray-600 mb-1 font-medium">{wedding.event_name}</p>
+                <p className="text-sm text-gray-500 mb-6">
+                  {new Date(wedding.event_date).toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </p>
+
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-3 mb-6 py-4 border-y border-gray-100">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-pink-600">{wedding.statistics?.total_photos || 0}</p>
+                    <p className="text-xs text-gray-600 mt-1">Photos</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-purple-600">{wedding.statistics?.total_videos || 0}</p>
+                    <p className="text-xs text-gray-600 mt-1">Videos</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-blue-600">{wedding.statistics?.total_guests || 0}</p>
+                    <p className="text-xs text-gray-600 mt-1">Guests</p>
                   </div>
                 </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <Link
+                    href={`/dashboard/wedding/${wedding.id}`}
+                    className="flex-1 px-4 py-2 bg-gradient-to-r from-pink-600 to-rose-600 text-white text-center font-semibold rounded-lg hover:opacity-90 transition text-sm"
+                  >
+                    Manage
+                  </Link>
+                  <a
+                    href={`/guest/${wedding.public_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 px-4 py-2 border-2 border-gray-200 text-gray-900 text-center font-semibold rounded-lg hover:bg-gray-50 transition text-sm"
+                  >
+                    View
+                  </a>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </main>
-    </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
   );
 }
